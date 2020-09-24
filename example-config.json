@@ -2,9 +2,7 @@
   "log": "info",
   "receivers": {
     "loki": {
-      "url": [
-        "http://localhost:3100/api/prom/push"
-      ]
+      "url": "http://localhost:3100/api/prom/push"
     },
     "stdout": false
   }
