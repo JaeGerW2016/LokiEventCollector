@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"time"
 )
 
@@ -92,8 +91,8 @@ func (lt *LokiTarget) Send(e *v1.Event) error {
 
 func makeRequestBody(e *v1.Event) []byte {
 	tags := "\"_kind\":\"" + e.Kind + "\""
-	timestamp := strconv.FormatInt(time.Now().UnixNano(), 10)
-	message := fmt.Sprintf("kube event [%s] %s [%s][%s/%s][%s] uid: [%s] last since %v", e.Type, e.Reason, e.InvolvedObject.Namespace, e.InvolvedObject.Kind, e.InvolvedObject.Name, e.Message, e.InvolvedObject.UID, time.Since(e.LastTimestamp.Time))
+	timestamp := time.Now().String()
+	message := fmt.Sprintf("%s kube event %s %s/%s %s %s uid: %s last since %v", e.Type, e.InvolvedObject.Namespace, e.InvolvedObject.Kind, e.InvolvedObject.Name, e.Reason,e.Message, e.InvolvedObject.UID, time.Since(e.LastTimestamp.Time))
 
 	param := []byte(`
 	{
