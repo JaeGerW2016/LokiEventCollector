@@ -5,7 +5,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	lokiclient "github.com/livepeer/loki-client/client"
 	"github.com/livepeer/loki-client/model"
@@ -14,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"time"
 )
 
@@ -63,11 +63,8 @@ func (lt *LokiTarget) Name() string {
 }
 
 func (lt *LokiTarget) Send(e *v1.Event) error {
-	toSend, err := json.Marshal(e)
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequest("POST", lt.config.URL, bytes.NewBuffer(toSend))
+	parse := makeRequestBody(e)
+	req, err := http.NewRequest("POST", lt.config.URL, bytes.NewBuffer(parse))
 	if err != nil {
 		return err
 	}
@@ -91,6 +88,28 @@ func (lt *LokiTarget) Send(e *v1.Event) error {
 		err = fmt.Errorf("server returned HTTP status %s (%d): %s", resp.Status, resp.StatusCode, line)
 	}
 	return err
+}
+
+func makeRequestBody(e *v1.Event) []byte {
+	tags := "\"_kind\":\"" + e.Kind + "\""
+	timestamp := strconv.FormatInt(time.Now().UnixNano(), 10)
+	message := fmt.Sprintf("kube event [%s] %s [%s][%s/%s][%s] uid: [%s] last since %v", e.Type, e.Reason, e.InvolvedObject.Namespace, e.InvolvedObject.Kind, e.InvolvedObject.Name, e.Message, e.InvolvedObject.UID, time.Since(e.LastTimestamp.Time))
+
+	param := []byte(`
+	{
+		"streams":[
+			{
+				"stream":{
+					` + tags + `
+				},
+				"values":[
+					["` + timestamp + `","` + message + `"]
+				]
+			}
+		]
+	}`)
+
+	return param
 }
 
 func (lt *LokiTarget) Filter(e *v1.Event) bool {

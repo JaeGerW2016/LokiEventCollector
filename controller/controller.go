@@ -25,7 +25,7 @@ type EventController struct {
 }
 
 func (ec *EventController) enqueue(e *corev1.Event, handleType string) {
-	logrus.Infof("event %s [%s][%s/%s][%s], last since %v", handleType, string(e.UID), e.InvolvedObject.Namespace, e.InvolvedObject.Name, e.Reason, time.Since(e.LastTimestamp.Time))
+	logrus.Infof("kube event [%s] %s [%s][%s/%s][%s] uid: [%s] last since %v", e.Type, e.Reason, e.InvolvedObject.Namespace, e.InvolvedObject.Kind, e.InvolvedObject.Name, e.Message, e.InvolvedObject.UID, time.Since(e.LastTimestamp.Time))
 	// prevent old events being handled when controller just start
 	if time.Since(e.LastTimestamp.Time) > time.Second*5 {
 		return
