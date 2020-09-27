@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"time"
 )
 
@@ -90,10 +91,10 @@ func (lt *LokiTarget) Send(e *v1.Event) error {
 }
 
 func makeRequestBody(e *v1.Event) []byte {
-	tags := "\"_kind\":\"" + e.Kind + "\""
-	timestamp := time.Now().String()
-	message := fmt.Sprintf("%s kube event %s %s/%s %s %s uid: %s last since %v", e.Type, e.InvolvedObject.Namespace, e.InvolvedObject.Kind, e.InvolvedObject.Name, e.Reason,e.Message, e.InvolvedObject.UID, time.Since(e.LastTimestamp.Time))
-
+	tags := "\"_kind\":\"" + e.InvolvedObject.Kind + "\""
+	timestamp := strconv.FormatInt(time.Now().UnixNano(), 10)
+	em := trimQuotes(e.Message)
+	message := fmt.Sprintf("%s kube event %s %s/%s %s %s uid:%s", e.Type, e.InvolvedObject.Namespace, e.InvolvedObject.Kind, e.InvolvedObject.Name, e.Reason, em, e.InvolvedObject.UID)
 	param := []byte(`
 	{
 		"streams":[
@@ -110,6 +111,16 @@ func makeRequestBody(e *v1.Event) []byte {
 
 	return param
 }
+
+func trimQuotes(s string) string {
+	if len(s) >= 2 {
+		if c := s[len(s)-1]; s[0] == c && (c == '"' || c == '\'') {
+			return s[1 : len(s)-1]
+		}
+	}
+	return s
+}
+
 
 func (lt *LokiTarget) Filter(e *v1.Event) bool {
 	return true
