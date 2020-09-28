@@ -101,6 +101,7 @@ func formatEvent(e v1.Event) string {
 			if v.Field(i).Type().Kind() == reflect.Struct {
 				structField := v.Field(i).Type()
 				for j := 0; j < structField.NumField(); j++ {
+					//filter string slice map struct which value is empty
 					if interfaceValueAssert(v.Field(i).Field(j).Interface()) {
 						continue
 					}
@@ -124,6 +125,7 @@ func formatEvent(e v1.Event) string {
 }
 
 func makeRequestBody(e *v1.Event) []byte {
+	//Constructing Tags with Specific Tags: _kind, _namespace, _host, _type
 	tags := `"_kind":"` + e.InvolvedObject.Kind + `",` + `"_namespace":"` + e.ObjectMeta.Namespace + `",` + `"_host":"` + e.Source.Host + `",` + `"_type":"` + e.Type + "\""
 	timestamp := strconv.FormatInt(time.Now().UnixNano(), 10)
 	message := formatEvent(*e)
@@ -144,6 +146,7 @@ func makeRequestBody(e *v1.Event) []byte {
 	return param
 }
 
+// Remove double quotes from a string
 func trimQuotes(s string) string {
 	var b bytes.Buffer
 	slice := strings.Fields(s)
@@ -155,6 +158,7 @@ func trimQuotes(s string) string {
 	return b.String()
 }
 
+//Determine if interfaces are empty strings, empty slices, empty dictionaries, and illegal constructs.
 func interfaceValueAssert(u interface{}) bool {
 	switch reflect.TypeOf(u).Kind() {
 	case reflect.String:
