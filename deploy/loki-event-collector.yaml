@@ -65,7 +65,7 @@ spec:
     spec:
       containers:
         - name: collector
-          image: 314315960/loki-event-collector:v1.1
+          image: 314315960/loki-event-collector:v1.10
           imagePullPolicy: Always
           volumeMounts:
             - name: config-volume

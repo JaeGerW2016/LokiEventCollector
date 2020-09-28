@@ -1,1 +1,2 @@
 # LokiEventCollector
+Kube Events in a Kubernetes cluster are stored for 1 hour by default. There are many cases when we want to check why a Pod crashed, but the events for that Pod have disappeared. The component observes the events in the cluster and sends it to a component that can handle logging specifically and do data persistence accordingly, like Loki which does not use system resources like elasticsearch.
