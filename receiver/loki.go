@@ -101,28 +101,22 @@ func formatEvent(e v1.Event) string {
 			if v.Field(i).Type().Kind() == reflect.Struct {
 				structField := v.Field(i).Type()
 				for j := 0; j < structField.NumField(); j++ {
-					//fmt.Printf("%s:%v,",
-					//	structField.Field(j).Name,
-					//	v.Field(i).Field(j).Interface(),
-					//)
-					b.WriteString(fmt.Sprintf("%s:%v,", structField.Field(j).Name, v.Field(i).Field(j).Interface()))
+					if interfaceValueAssert(v.Field(i).Field(j).Interface()) {
+						continue
+					}
+					b.WriteString(fmt.Sprintf("%s:%v, ", structField.Field(j).Name, v.Field(i).Field(j).Interface()))
 				}
 				continue
 			}
 			if t.Field(i).Name == "Message" {
 				m := trimQuotes(fmt.Sprintf("%v", v.Field(i).Interface()))
-				//fmt.Printf("%s:%v,",
-				//	t.Field(i).Name,
-				//m,
-				//)
-				b.WriteString(fmt.Sprintf("%s:%v,", t.Field(i).Name, m))
+				b.WriteString(fmt.Sprintf("%s:%v, ", t.Field(i).Name, m))
 				continue
 			}
-			//fmt.Printf("%s:%v,",
-			//	t.Field(i).Name,
-			//	v.Field(i).Interface(),
-			//)
-			b.WriteString(fmt.Sprintf("%s:%v,", t.Field(i).Name, v.Field(i).Interface()))
+			if interfaceValueAssert(v.Field(i).Interface()) {
+				continue
+			}
+			b.WriteString(fmt.Sprintf("%s:%v, ", t.Field(i).Name, v.Field(i).Interface()))
 		}
 
 	}
@@ -130,7 +124,7 @@ func formatEvent(e v1.Event) string {
 }
 
 func makeRequestBody(e *v1.Event) []byte {
-	tags := "\"_kind\":\"" + e.InvolvedObject.Kind + "\"" + `","` + "\"_namespace\":\"" + e.ObjectMeta.Namespace + "\""
+	tags := `"_kind":"` + e.InvolvedObject.Kind + `",` + `"_namespace":"` + e.ObjectMeta.Namespace + `",` + `"_host":"` + e.Source.Host + `",` + `"_type":"` + e.Type + "\""
 	timestamp := strconv.FormatInt(time.Now().UnixNano(), 10)
 	message := formatEvent(*e)
 	param := []byte(`
@@ -159,6 +153,33 @@ func trimQuotes(s string) string {
 		b.WriteString(v)
 	}
 	return b.String()
+}
+
+func interfaceValueAssert(u interface{}) bool {
+	switch reflect.TypeOf(u).Kind() {
+	case reflect.String:
+		if u == "" {
+			return true
+		}
+	case reflect.Slice:
+		s := reflect.ValueOf(u)
+		if s.Len() == 0 {
+			return true
+		}
+	case reflect.Map:
+		m := reflect.ValueOf(u)
+		if m.Len() == 0 {
+			return true
+		}
+	case reflect.Struct:
+		st := reflect.ValueOf(&u).Elem()
+		if !st.IsValid() {
+			return true
+		}
+	default:
+		return false
+	}
+	return false
 }
 
 func (lt *LokiTarget) Filter(e *v1.Event) bool {
