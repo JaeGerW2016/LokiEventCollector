@@ -13,7 +13,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"reflect"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -90,11 +92,47 @@ func (lt *LokiTarget) Send(e *v1.Event) error {
 	return err
 }
 
+func formatEvent(e v1.Event) string {
+	var b strings.Builder
+	t := reflect.TypeOf(e)
+	v := reflect.ValueOf(e)
+	for i := 0; i < v.NumField(); i++ {
+		if v.Field(i).CanInterface() {
+			if v.Field(i).Type().Kind() == reflect.Struct {
+				structField := v.Field(i).Type()
+				for j := 0; j < structField.NumField(); j++ {
+					//fmt.Printf("%s:%v,",
+					//	structField.Field(j).Name,
+					//	v.Field(i).Field(j).Interface(),
+					//)
+					b.WriteString(fmt.Sprintf("%s:%v,", structField.Field(j).Name, v.Field(i).Field(j).Interface()))
+				}
+				continue
+			}
+			if t.Field(i).Name == "Message" {
+				m := trimQuotes(fmt.Sprintf("%v", v.Field(i).Interface()))
+				//fmt.Printf("%s:%v,",
+				//	t.Field(i).Name,
+				//m,
+				//)
+				b.WriteString(fmt.Sprintf("%s:%v,", t.Field(i).Name, m))
+				continue
+			}
+			//fmt.Printf("%s:%v,",
+			//	t.Field(i).Name,
+			//	v.Field(i).Interface(),
+			//)
+			b.WriteString(fmt.Sprintf("%s:%v,", t.Field(i).Name, v.Field(i).Interface()))
+		}
+
+	}
+	return b.String()
+}
+
 func makeRequestBody(e *v1.Event) []byte {
-	tags := "\"_kind\":\"" + e.InvolvedObject.Kind + "\""
+	tags := "\"_kind\":\"" + e.InvolvedObject.Kind + "\"" + `","` + "\"_namespace\":\"" + e.ObjectMeta.Namespace + "\""
 	timestamp := strconv.FormatInt(time.Now().UnixNano(), 10)
-	em := trimQuotes(e.Message)
-	message := fmt.Sprintf("%s kube event %s %s/%s %s %s uid:%s", e.Type, e.InvolvedObject.Namespace, e.InvolvedObject.Kind, e.InvolvedObject.Name, e.Reason, em, e.InvolvedObject.UID)
+	message := formatEvent(*e)
 	param := []byte(`
 	{
 		"streams":[
@@ -113,14 +151,15 @@ func makeRequestBody(e *v1.Event) []byte {
 }
 
 func trimQuotes(s string) string {
-	if len(s) >= 2 {
-		if c := s[len(s)-1]; s[0] == c && (c == '"' || c == '\'') {
-			return s[1 : len(s)-1]
-		}
+	var b bytes.Buffer
+	slice := strings.Fields(s)
+	for _, v := range slice {
+		v = strings.Trim(v, "\"")
+		b.WriteString(" ")
+		b.WriteString(v)
 	}
-	return s
+	return b.String()
 }
-
 
 func (lt *LokiTarget) Filter(e *v1.Event) bool {
 	return true

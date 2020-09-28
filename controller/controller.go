@@ -55,7 +55,6 @@ func (ec *EventController) processNextItem() bool {
 			logrus.Errorf("send event to [%s] error: %v", t.Name(), err)
 		}
 	}
-
 	return true
 }
 
@@ -100,7 +99,7 @@ func NewEventController(cs *kubernetes.Clientset) *EventController {
 	factory := informers.NewSharedInformerFactory(cs, 0)
 	eventInformer := factory.Core().V1().Events()
 
-	// elasticsearch / stdout
+	// loki / stdout
 	var targets []receiver.Receiver
 	if config.C.Receivers.Loki != nil {
 		target, err := receiver.NewLokiTarget(config.C.Receivers.Loki)
